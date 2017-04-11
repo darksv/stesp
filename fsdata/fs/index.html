@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no">
+		<link rel="stylesheet" type="text/css" href="css/siimple.min.css">
+		<link rel="stylesheet" type="text/css" href="css/style.css">
+		<link rel="shortcut icon" href="img/favicon.png">
+		<title>HTTP Server</title>
+	</head>
+	<body>
+		<div class="grid main">
+			<h1>Stepper motor controller</h1>
+			<div id="status_box" class="alert alert-info">Loading..</div>
+			<div class="channels">
+  				<div>
+  					<h2>Channel #0</h2>
+						<div class="form-field">
+							<label for="ch0_dir">Direction:</label>
+							<select id="ch0_dir">
+								<option value="left">left</option>
+								<option value="right">right</option>
+							</select>
+						</div>
+						<div class="form-field">
+							<label for="ch0_steps">Steps:</label>
+							<input type="number" id="ch0_steps" value="10" />
+						</div>
+						<div class="form-field">
+							<label for="ch0_duration">Duration:</label>
+							<input type="number" id="ch0_duration" value="1000" />
+						</div>
+						<div class="form-field">
+							<button onclick="execute(0)">Execute</button>
+						</div>
+  				</div>
+  				<div>
+						<h2>Channel #1</h2>
+						<div class="form-field">
+							<label for="ch1_dir">Direction:</label>
+							<select id="ch1_dir">
+								<option value="left">left</option>
+								<option value="right">right</option>
+							</select>
+						</div>
+						<div class="form-field">
+							<label for="ch1_steps">Steps:</label>
+							<input type="number" id="ch1_steps" value="10" />
+						</div>
+						<div class="form-field">
+							<label for="ch1_duration">Duration:</label>
+							<input type="number" id="ch1_duration" value="1000" />
+						</div>
+						<div class="form-field">
+							<button onclick="execute(1)">Execute</button>
+						</div>
+  				</div>
+  				<div>
+						<h2>Channel #2</h2>
+						<div class="form-field">
+							<label for="ch2_dir">Direction:</label>
+							<select id="ch2_dir">
+								<option value="left">left</option>
+								<option value="right">right</option>
+							</select>
+						</div>
+						<div class="form-field">
+							<label for="ch3_steps">Steps:</label>
+							<input type="number" id="ch2_steps" value="10" />
+						</div>
+						<div class="form-field">
+							<label for="ch3_duration">Duration:</label>
+							<input type="number" id="ch2_duration" value="1000" />
+						</div>
+						<div class="form-field">
+							<button onclick="execute(2)">Execute</button>
+						</div>
+  				</div>
+			</div>
+
+		</div>
+		<script>
+			var ws;
+			var retries;
+			window.onload = function() {
+				wsOpen();
+			}
+			function setMsg(cls, text) {
+				sbox = document.getElementById('status_box');
+				sbox.className = "alert alert-" + cls;
+				sbox.innerHTML = text;
+				console.log(text);
+			}
+
+			function onMessage(evt) {
+				retries = 0;
+				var dv = new DataView(evt.data);
+				var val = dv.getUint16(0);
+				if (val == 0xBEEF || val == 0xDEAD)
+					console.log("LED switched");
+			}
+			function wsOpen() {
+				if (ws === undefined || ws.readyState != 0) {
+					if (retries)
+						setMsg("error", "WebSocket timeout, retrying..");
+					else
+						setMsg("info", "Opening WebSocket..");
+					ws = new WebSocket("ws://" + location.host);
+					ws.binaryType = 'arraybuffer';
+					ws.onopen = function(evt) { retries = 0; setMsg("done", "WebSocket is open."); };
+					ws.onerror = function(evt) { setMsg("error", "WebSocket error!"); };
+					ws.onmessage = function(evt) { onMessage(evt); };
+					wsOpenStream();
+					retries = 0;
+				}
+			}
+			function wsOpenStream() {
+				var uri = "/stream"
+				var ws = new WebSocket("ws://" + location.host + uri);
+				ws.onmessage = function(evt) {
+					console.log(evt.data);
+					var stats = JSON.parse(evt.data);
+					console.log(stats);
+					document.getElementById('uptime').innerHTML = stats.uptime + ' seconds';
+					document.getElementById('heap').innerHTML = stats.heap + ' bytes';
+					document.getElementById('led').innerHTML = (stats.led == 1) ? 'On' : 'Off';
+				};
+			}
+			function wsWrite(data) {
+				if (ws.readyState == 3 || retries++ > 5)
+					wsOpen();
+				else if (ws.readyState == 1)
+					ws.send(data);
+			}
+			function execute(n) {
+				var dir = document.getElementById('ch' + n + '_dir').value;
+				var steps = parseInt(document.getElementById('ch' + n + '_steps').value);
+				var duration = parseInt(document.getElementById('ch' + n + '_duration').value);
+
+				if (dir === 'left') {
+					steps *= -1;
+				}
+
+				var cmd = n + ',' + steps + ',' + duration;
+				console.log(cmd);
+
+				wsWrite(cmd);
+			}
+		</script>
+	</body>
+</html>
