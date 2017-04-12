@@ -11,7 +11,7 @@
 #define AP_SSID "MotorControl"
 #define AP_PSK "12345678"
 
-#define CHANNELS_NUM 1
+#define CHANNELS_NUM 2
 
 struct Channel {
     /* Number of ticks left until STEP output toggle */
@@ -38,13 +38,13 @@ volatile struct Channel channels[CHANNELS_NUM] = {
         .dir_pin = 4,
         .step_pin = 5
     },
-    // {
-    //     .counter = 0,
-    //     .steps = 0,
-    //     .frequency = 1,
-    //     .dir_pin = 4,
-    //     .step_pin = 5
-    // },
+    {
+        .ticks = 0,
+        .toggles = 0,
+        .interval = 0,
+        .dir_pin = 12,
+        .step_pin = 14
+    },
 };
 
 char* index_cgi_handler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
